@@ -25,7 +25,6 @@ export class LikesService {
     const like = this.likesRepository.create({ userId, murmurId });
     await this.likesRepository.save(like);
 
-
     await this.murmursRepository.increment({ id: murmurId }, 'likesCount', 1);
   }
 

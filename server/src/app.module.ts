@@ -18,7 +18,7 @@ import { LikesModule } from "./modules/likes/likes.module";
       username: 'docker',
       password: 'docker',
       database: 'test',
-      entities: [User],
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
     }),
     TypeOrmModule.forFeature([User]),

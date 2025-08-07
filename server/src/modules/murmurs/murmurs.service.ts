@@ -5,6 +5,12 @@ import { Murmur } from './murmur.entity';
 import { CreateMurmurDto } from './dto/create-murmur.dto';
 import { MurmurResponseDto } from './dto/murmur-response.dto';
 
+export interface PaginationOptions {
+  userId?: number;
+  page: number;
+  limit: number;
+}
+
 @Injectable()
 export class MurmursService {
   constructor(
@@ -20,18 +26,57 @@ export class MurmursService {
     return this.murmursRepository.save(murmur);
   }
 
-  async findAll(userId?: number): Promise<MurmurResponseDto[]> {
-    const murmurs = await this.murmursRepository
+  async findAll(options: PaginationOptions): Promise<{
+    items: MurmurResponseDto[];
+    meta: {
+      totalItems: number;
+      itemCount: number;
+      itemsPerPage: number;
+      totalPages: number;
+      currentPage: number;
+    };
+  }> {
+    const { userId, page = 1, limit = 10 } = options;
+    const skip = (page - 1) * limit;
+
+    const query = this.murmursRepository
       .createQueryBuilder('murmur')
       .leftJoinAndSelect('murmur.author', 'author')
       .leftJoinAndSelect('murmur.likes', 'like', userId ? 'like.userId = :userId' : '1=0', { userId })
-      .orderBy('murmur.createdAt', 'DESC')
-      .getMany();
+      .orderBy('murmur.createdAt', 'DESC');
 
-    return murmurs.map(murmur => this.transformToResponseDto(murmur, userId));
+    const [murmurs, totalItems] = await query
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    const items = murmurs.map(murmur => this.transformToResponseDto(murmur, userId));
+
+    return {
+      items,
+      meta: {
+        totalItems,
+        itemCount: items.length,
+        itemsPerPage: limit,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+      },
+    };
   }
 
-  async findTimeline(userId: number): Promise<MurmurResponseDto[]> {
+  async findTimeline(options: PaginationOptions): Promise<{
+    items: MurmurResponseDto[];
+    meta: {
+      totalItems: number;
+      itemCount: number;
+      itemsPerPage: number;
+      totalPages: number;
+      currentPage: number;
+    };
+  }> {
+    const { userId, page = 1, limit = 10 } = options;
+    const skip = (page - 1) * limit;
+
     const murmurs = await this.murmursRepository
       .createQueryBuilder('murmur')
       .leftJoinAndSelect('murmur.author', 'author')
@@ -41,7 +86,20 @@ export class MurmursService {
       .orderBy('murmur.createdAt', 'DESC')
       .getMany();
 
-    return murmurs.map(murmur => this.transformToResponseDto(murmur, userId));
+    const totalItems = murmurs.length;
+    const items = murmurs.slice(skip, skip + limit).map(murmur => this.transformToResponseDto(murmur, userId));
+
+    return {
+      items,
+      meta: {
+        totalItems,
+        itemCount: items.length,
+        itemsPerPage: limit,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+      },
+    };
+
   }
 
   async findById(id: number, userId?: number): Promise<MurmurResponseDto> {
@@ -74,19 +132,20 @@ export class MurmursService {
   }
 
   private transformToResponseDto(murmur: Murmur, userId?: number): MurmurResponseDto {
+    if (!murmur) {
+      throw new NotFoundException('Murmur not found');
+    }
     return {
       id: murmur.id,
       content: murmur.content,
-      imageUrl: murmur.imageUrl,
       createdAt: murmur.createdAt,
-      likesCount: murmur.likesCount,
-      isLiked: userId ? murmur.likes.some(like => like.userId === userId) : false,
       author: {
         id: murmur.author.id,
-        username: murmur.author.username,
-        displayName: murmur.author.displayName || murmur.author.username,
-        avatar: murmur.author.avatar,
+        displayName: murmur.author.displayName,
       },
+      isLiked: murmur.likes?.length > 0,
+      likesCount: murmur.likesCount || 0,
     };
   }
+
 }

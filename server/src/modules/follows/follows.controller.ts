@@ -1,4 +1,4 @@
-import { Controller, Post, Delete, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Delete, Param, UseGuards, Request, Body } from "@nestjs/common";
 import { FollowsService } from './follows.service';
 
 
@@ -7,8 +7,8 @@ export class FollowsController {
   constructor(private followsService: FollowsService) {}
 
   @Post(':id/follow')
-  async follow(@Param('id') followedId: number, @Request() req) {
-    return this.followsService.follow(req.user.userId, followedId);
+  async follow(@Param('id') followedId: number,  @Body() body: { authorId: number }) {
+    return this.followsService.follow(body.authorId, followedId);
   }
 
   @Delete(':id/follow')

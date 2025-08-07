@@ -7,14 +7,28 @@ export class MurmursController {
   constructor(private murmursService: MurmursService) {}
 
   @Get('murmurs')
-  async findAll(@Query('userId') userId?: number) {
-    return this.murmursService.findAll(userId);
+  async findAll(
+    @Query('userId') userId?: number,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ) {
+    return this.murmursService.findAll({
+      userId,
+      page: Number(page),
+      limit: Number(limit),
+    });
   }
 
 
   @Get('timeline')
-  async getTimeline(@Request() req) {
-    return this.murmursService.findTimeline(req.user.userId);
+  async getTimeline(@Body() body: { userId: number },
+                    @Query('page') page = 1,
+                    @Query('limit') limit = 10,) {
+    return this.murmursService.findTimeline({
+      userId: body.userId,
+      page: Number(page),
+      limit: Number(limit),
+    });
   }
 
   @Get('murmurs/:id')
@@ -24,8 +38,8 @@ export class MurmursController {
 
 
   @Post('me/murmurs')
-  async create(@Body() createMurmurDto: CreateMurmurDto, @Request() req) {
-    return this.murmursService.create(createMurmurDto, req.user.userId);
+  async create(@Body() createMurmurDto: CreateMurmurDto) {
+    return this.murmursService.create(createMurmurDto, createMurmurDto.authorId);
   }
 
   @Delete('me/murmurs/:id')
